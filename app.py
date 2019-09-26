@@ -101,4 +101,6 @@ def _create_summary_sheet(spreadsheet):
 
 
 if __name__ == "__main__":
+    print("Running...")
     run()
+    print("Done!")
