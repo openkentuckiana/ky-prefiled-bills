@@ -44,6 +44,11 @@ def run():
     bill_request_urls = re.findall(BILL_REQUEST_URL_RE, str(soup))
 
     for url in bill_request_urls:
+        bill_number = url.replace(".html", "")
+        if bill_number in [s.title for s in spreadsheet.worksheets()]:
+            print(f"Skipping bill {bill_number}, which already exists")
+            continue
+
         values = [None for i in range(len(BILL_ROWS))]
 
         page = urllib.request.urlopen(PREFILED_BILLS_PAGE.replace("prefiled_bills.html", url))
@@ -54,14 +59,11 @@ def run():
             header = row.find_all("th")[0].text.strip()
             if header in BILL_ROWS:
                 values[BILL_ROWS.index(header)] = row.find_all("td")[0].text.strip()
-        _add_bill(url.replace(".html", ""), values, spreadsheet)
-        break
+        _add_bill(bill_number, values, spreadsheet)
 
 
 def _add_bill(bill_number, values, spreadsheet):
-    if bill_number in [s.title for s in spreadsheet.worksheets()]:
-        return
-
+    print(f"Adding bill number {bill_number}")
     summary_sheet = spreadsheet.worksheet("Summary")
     bill_sheet = spreadsheet.add_worksheet(bill_number, 5, 2)
 
