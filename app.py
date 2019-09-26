@@ -35,17 +35,19 @@ def run():
     creds = ServiceAccountCredentials.from_json_keyfile_dict(CLIENT_SECRET, scope)
     client = gspread.authorize(creds)
     spreadsheet = client.open(SPREADSHEET_NAME)
+    worksheet_titles = [s.title for s in spreadsheet.worksheets()]
 
-    _create_summary_sheet(spreadsheet)
+    _create_summary_sheet(spreadsheet, worksheet_titles)
 
     page = urllib.request.urlopen(PREFILED_BILLS_PAGE)
     soup = BeautifulSoup(page, "html.parser")
 
     bill_request_urls = re.findall(BILL_REQUEST_URL_RE, str(soup))
+    bill_request_urls.sort()
 
     for url in bill_request_urls:
         bill_number = url.replace(".html", "")
-        if bill_number in [s.title for s in spreadsheet.worksheets()]:
+        if bill_number in worksheet_titles:
             print(f"Skipping bill {bill_number}, which already exists")
             continue
 
@@ -80,16 +82,20 @@ def _add_bill(bill_number, values, spreadsheet):
         cell.value = values[i]
         i += 1
     bill_sheet.update_cells(cell_list)
+    bill_sheet.update_acell(
+        "B1",
+        f'=HYPERLINK("https://apps.legislature.ky.gov/recorddocuments/bill/20RS/{bill_number}/orig_bill.pdf", "Original Bill PDF")',
+    )
 
     ss_last_row = len(summary_sheet.col_values(1)) + 1
     summary_sheet.update_cell(ss_last_row, 1, bill_number)
 
 
-def _create_summary_sheet(spreadsheet):
-    if "Summary" not in [s.title for s in spreadsheet.worksheets()]:
-        spreadsheet.add_worksheet("Summary", 500, 4)
+def _create_summary_sheet(spreadsheet, worksheet_titles):
+    if SUMMARY_SHEET_NAME not in worksheet_titles:
+        spreadsheet.add_worksheet(SUMMARY_SHEET_NAME, 500, 4)
 
-    summary_sheet = spreadsheet.worksheet("Summary")
+    summary_sheet = spreadsheet.worksheet(SUMMARY_SHEET_NAME)
 
     if not summary_sheet.row_values(1):
         cell_list = summary_sheet.range("A1:D1")
