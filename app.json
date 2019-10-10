@@ -1,9 +1,9 @@
 {
   "name": "ky-prefiled-bills-scraper",
   "env": {
-    "SPREADSHEET_NAME": {
-      "description": "The name of the Google Sheet in which to insert data.",
-      "value": "Prefiled Bills"
+    "SPREADSHEET_URL": {
+      "description": "The URL of the Google Sheet in which to insert data.",
+      "value": ""
     },
     "CLIENT_SECRET": {
       "description": "Google JSON service account credentials: https://gspread.readthedocs.io/en/latest/oauth2.html#using-signed-credentials",
