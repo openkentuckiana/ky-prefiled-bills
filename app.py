@@ -93,7 +93,7 @@ def _add_bills(rows, start_at_row, sheet_name, spreadsheet):
         if column_number == 1:
             worksheet.update_cell(
                 cell.row, 1,
-                f'=HYPERLINK("https://apps.legislature.ky.gov/recorddocuments/bill/20RS/{rows[row_num][0]}/orig_bill.pdf", "{rows[row_num][0]}")',
+                f'=HYPERLINK("https://apps.legislature.ky.gov/record/20rs/prefiled/{rows[row_num][0]}.html", "{rows[row_num][0]}")',
             )
         cell.value = rows[row_num][column_number]
         if column_number == (num_columns - 1):
