@@ -66,7 +66,7 @@ def run():
                     bill_action_rows = tables[1].find("tbody").find_all("tr")
                     if bill_action_rows:
                         first_row = bill_action_rows[0]
-                        if first_row.find_all("tr")[0].text.strip().startswith("Prefiled by"):
+                        if first_row.find_all("td")[0].text.strip().startswith("Prefiled by"):
                             values[SHEET_HEADERS.index("Date Filed")] = first_row.find_all("th")[0].text.strip()
                         else:
                             values[SHEET_HEADERS.index("Date Filed")] = ""
