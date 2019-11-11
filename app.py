@@ -20,7 +20,7 @@ PAGES = {
 }
 BILL_REQUEST_URL_RE = r"(BR\d+\.html)"
 
-SHEET_HEADERS = ["Bill Number", "Bill Title", "Bill Sponsors", "Last Action"]
+SHEET_HEADERS = ["Bill Number", "Date Filed", "Bill Title", "Bill Sponsors", "Last Action"]
 MAX_COLUMN = chr(97 + len(SHEET_HEADERS)-1).upper()
 
 def run():
@@ -65,6 +65,11 @@ def run():
                 if len(tables) > 1:
                     bill_action_rows = tables[1].find("tbody").find_all("tr")
                     if bill_action_rows:
+                        first_row = bill_action_rows[0]
+                        if first_row.find_all("tr")[0].text.strip().startswith("Prefiled by"):
+                            values[SHEET_HEADERS.index("Date Filed")] = first_row.find_all("th")[0].text.strip()
+                        else:
+                            values[SHEET_HEADERS.index("Date Filed")] = ""
                         last_row = bill_action_rows[-1]
                         values[SHEET_HEADERS.index("Last Action")] = last_row.find_all("td")[0].text.strip()
                     else:
