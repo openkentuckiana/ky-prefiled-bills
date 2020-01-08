@@ -15,10 +15,30 @@ CLIENT_SECRET = json.loads(os.getenv("CLIENT_SECRET"))
 PREFILED_BILLS_PAGE = os.getenv(
     "PREFILED_BILLS_PAGE", "https://apps.legislature.ky.gov/record/20rs/prefiled/prefiled_bills.html"
 )
+HOUSE_BILLS_PAGE = os.getenv(
+    "HOUSE_BILLS_PAGE", "https://apps.legislature.ky.gov/record/20rs/house_bills.html"
+)
+SENATE_BILLS_PAGE = os.getenv(
+    "PREFILED_BILLS_PAGE", "https://apps.legislature.ky.gov/record/20rs/senate_bills.html"
+)
+
 PAGES = {
     'Prefiled Bills': PREFILED_BILLS_PAGE,
+    'House Bills': HOUSE_BILLS_PAGE,
+    'Senate Bills': SENATE_BILLS_PAGE,
 }
-BILL_REQUEST_URL_RE = r"(BR\d+\.html)"
+
+BILL_BASE_URLS = {
+    PREFILED_BILLS_PAGE: PREFILED_BILLS_PAGE.replace("prefiled_bills.html", ""),
+    HOUSE_BILLS_PAGE: HOUSE_BILLS_PAGE.replace("house_bills.html", ""),
+    SENATE_BILLS_PAGE: SENATE_BILLS_PAGE.replace("senate_bills.html", ""),
+}
+
+PAGE_RES = {
+    PREFILED_BILLS_PAGE: r"(BR\d+\.html)",
+    HOUSE_BILLS_PAGE: r"(hb\d+\.html)",
+    SENATE_BILLS_PAGE: r"(sb\d+\.html)"
+}
 
 SHEET_HEADERS = ["Bill Number", "Date Filed", "Bill Title", "Bill Sponsors", "Last Action"]
 MAX_COLUMN = chr(97 + len(SHEET_HEADERS)-1).upper()
@@ -32,17 +52,20 @@ def run():
 
     for sheet_name, page_url in PAGES.items():
         rows = []
+
+        print(f"Loading URL {page_url} for sheet {sheet_name}")
         page = urllib.request.urlopen(page_url)
         soup = BeautifulSoup(page, "html.parser")
 
         _create_sheet(spreadsheet, sheet_name, worksheet_titles)
 
-        bill_request_urls = re.findall(BILL_REQUEST_URL_RE, str(soup))
-        bill_request_urls.sort(key=lambda u: int(re.sub(".html", "", re.sub("BR", "", u))))
+        bill_request_urls = re.findall(PAGE_RES[page_url], str(soup))
+        bill_request_urls.sort(key=lambda u: int(re.sub(".html", "", re.sub(PAGE_RES[page_url][1:3], "", u))))
 
         added_bills = spreadsheet.worksheet(sheet_name).col_values(1)
         start_at_row = len(added_bills) + 1
 
+        bills_added = 0
         for url in bill_request_urls:
             bill_number = url.replace(".html", "")
             if bill_number in added_bills:
@@ -51,8 +74,13 @@ def run():
 
             values = [None for i in range(len(SHEET_HEADERS))]
 
-            page = urllib.request.urlopen(PREFILED_BILLS_PAGE.replace("prefiled_bills.html", url))
+            page = urllib.request.urlopen(BILL_BASE_URLS[page_url] + url)
             soup = BeautifulSoup(page, "html.parser")
+
+            # Do 25 per run to avoid hitting API limits
+            if bills_added == 25:
+                break
+            bills_added += 1
 
             tables = soup.find_all("div", {"class": "bill-table"})
             if len(tables) > 0:
@@ -62,16 +90,18 @@ def run():
                     values[0] = bill_number
                     if f"Bill {header}" in SHEET_HEADERS:
                         values[SHEET_HEADERS.index(f"Bill {header}")] = re.sub(r"\s+", " ", row.find_all("td")[0].text.strip())
+                    if f"Bill {header + 's'}" in SHEET_HEADERS:  # Sponsors vs Sponsor
+                        values[SHEET_HEADERS.index(f"Bill {header + 's'}")] = re.sub(r"\s+", " ", row.find_all("td")[0].text.strip())
                 if len(tables) > 1:
                     bill_action_rows = tables[1].find("tbody").find_all("tr")
                     if bill_action_rows:
                         first_row = bill_action_rows[0]
-                        if first_row.find_all("td")[0].text.strip().startswith("Prefiled by"):
+                        if first_row.find_all("td")[0].text.strip().lower().startswith("prefiled") or first_row.find_all("td")[0].text.strip().lower().startswith("introduced"):
                             values[SHEET_HEADERS.index("Date Filed")] = first_row.find_all("th")[0].text.strip()
                         else:
                             values[SHEET_HEADERS.index("Date Filed")] = ""
                         last_row = bill_action_rows[-1]
-                        values[SHEET_HEADERS.index("Last Action")] = last_row.find_all("td")[0].text.strip()
+                        values[SHEET_HEADERS.index("Last Action")] = last_row.find_all("td")[0].text.strip().replace("\n", " ").replace("  ", " ")
                     else:
                         print(f"Didn't find any actions for {bill_number}")
                 else:
@@ -98,7 +128,7 @@ def _add_bills(rows, start_at_row, sheet_name, spreadsheet):
         if column_number == 1:
             worksheet.update_cell(
                 cell.row, 1,
-                f'=HYPERLINK("https://apps.legislature.ky.gov/record/20rs/prefiled/{rows[row_num][0]}.html", "{rows[row_num][0]}")',
+                f'=HYPERLINK("https://apps.legislature.ky.gov/record/20rs/{"prefiled/" if rows[row_num][0].startswith("BR") else ""}{rows[row_num][0]}.html", "{rows[row_num][0]}")',
             )
         cell.value = rows[row_num][column_number]
         if column_number == (num_columns - 1):
