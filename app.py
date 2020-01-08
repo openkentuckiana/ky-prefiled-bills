@@ -19,7 +19,7 @@ HOUSE_BILLS_PAGE = os.getenv(
     "HOUSE_BILLS_PAGE", "https://apps.legislature.ky.gov/record/20rs/house_bills.html"
 )
 SENATE_BILLS_PAGE = os.getenv(
-    "PREFILED_BILLS_PAGE", "https://apps.legislature.ky.gov/record/20rs/senate_bills.html"
+    "SENATE_BILLS_PAGE", "https://apps.legislature.ky.gov/record/20rs/senate_bills.html"
 )
 
 PAGES = {
